@@ -1,0 +1,43 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: randomquotes
+  ECS_CLUSTER: randomquotes-cluster
+  ECS_SERVICE: randomquotes-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: verificar cuenta
+        run: aws sts get-caller-identity --query Account --output text
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: construir y subir imagen
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          docker build -t $REGISTRY/$ECR_REPOSITORY:latest -t $REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
+          docker push --all-tags $REGISTRY/$ECR_REPOSITORY
+
+      - name: desplegar en ecs
+        run: |
+          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment --query 'service.deployments[0].id' --output text
+          aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_SERVICE
