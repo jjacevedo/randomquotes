@@ -2,6 +2,7 @@ const express = require("express");
 const os = require("os");
 const app = express();
 const port = 80;
+const version = "2.0";
 const phrases = [
   "Get ready to be inspired…",
   "See rejection as redirection.",
@@ -13,6 +14,6 @@ const phrases = [
 ];
 app.get("/", (req, res) => {
   const number = Math.floor(Math.random() * phrases.length);
-  res.send(phrases[number] + " - Container Id: " + os.hostname());
+  res.send(phrases[number] + " - Container Id: " + os.hostname() + " - Version: " + version);
 });
 app.listen(port, "0.0.0.0", () => console.log(`Server on ${port}`));
